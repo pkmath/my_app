@@ -6,6 +6,7 @@
 #
 #    http://shiny.rstudio.com/
 #
+# Additional Bootstrap themes at [Bootswatch](http://bootswatch.com/)
 
 library(shiny)
 library(tidyverse)
@@ -14,56 +15,68 @@ list_choices <-  unique(msleep$vore)[!is.na(unique(msleep$vore))]
 names(list_choices) <- paste(unique(msleep$vore)[!is.na(unique(msleep$vore))],"vore",sep="")
 
 # Define UI for application that draws a histogram
-ui <- fluidPage(
-   
-   # Application title
-   titlePanel("This is a new Shiny app"),
-   
-   p(tags$button(class="btn btn-warning", 
-                 `data-toggle`="collapse", 
-                 `data-target`="#collapseExample",
-                 "References")),
-   
-   div(class="collapse", id="collapseExample",
-       div(class="card card-body",
-           includeMarkdown("references.md")
-       )),
-   
-   
-   
-   selectInput("select", label = h3("Plot by type of alimentation"), 
-               choices = character(0),
-               selected = 1),
-   
-   plotOutput(outputId = "plot")
-)
+ui <- navbarPage("Shiny app",
+                 
+                 tabPanel("msleep",
+                          fluidPage( 
+                            sidebarLayout(
+                              sidebarPanel(
+                                selectInput("select", label = h3("Plot by type of alimentation"), 
+                                            choices = character(0),
+                                            selected = 1)
+                              ), # sidebarPanel
+                              mainPanel(
+                                plotOutput(outputId = "plot")
+                              ) # mainPanel
+                            ) # sidebarLayout
+                          ) # fluidPage
+                 ), #  tabPanel
+                 tabPanel("Random generator",
+                          sidebarLayout(position = "right",
+                                        sidebarPanel(
+                                          selectInput("dist", label = h3("Select the distribution"), 
+                                                      choices = list(Normal="rnorm", Uniform="runif", Exponential="rexp"),
+                                                      selected = 1),
+                                          sliderInput("n_sample", label = h3("Number of samples"), min = 10, 
+                                                      max = 100, value = 50),
+                                          sliderInput("n_bins", label = h3("Number of bins"), min = 1, 
+                                                      max = 50, value = 30)
+                                        ), # sidebarPanel
+                                        mainPanel(
+                                          plotOutput(outputId = "pulpo")
+                                        ) # mainPanel
+                          ) # sidebarLayout
+                 ), #  tabPanel
+                 tabPanel("References",
+                          includeMarkdown("references.md")
+                 ) #  tabPanel
+) # navbarPage
+
+col_scale <- scale_colour_discrete(limits = unique(msleep$vore))
 
 # Define server logic required to draw a histogram
-server <- function(input, output,session) {
+server <- function(input, output, session) {
   
+  # Can also set the label and select items
   updateSelectInput(session, "select",
                     choices = list_choices,
                     selected = tail(list_choices, 1)
-  )
+  );
   
-  col_scale <- scale_colour_discrete(limits = unique(msleep$vore))
-  
- 
-    
   output$plot <- renderPlot({
-    
+    # cat(file=stderr(), "input$select:", input$select == "", "\n")
     if(input$select != ""){
-    ggplot(msleep %>% filter(vore == input$select), aes(bodywt, sleep_total, colour = vore)) +
-          scale_x_log10() +
-      col_scale +
-      geom_point() 
+      ggplot(msleep %>% filter(vore == input$select), aes(bodywt, sleep_total, colour = vore)) +
+        scale_x_log10() +
+        col_scale +
+        geom_point()
     }
-  })
-   
-   
+  });
   
+  cmd = reactive(eval(parse(text=paste(input$dist,"(",input$n_sample,")",sep=""))));
+  
+  output$pulpo <- renderPlot(hist(cmd(), breaks=input$n_bins));
 }
 
 # Run the application 
 shinyApp(ui = ui, server = server)
-
