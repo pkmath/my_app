@@ -19,30 +19,49 @@ ui <- fluidPage(
    # Application title
    titlePanel("This is a new Shiny app"),
    
-   includeMarkdown("references.md"),
+   p(tags$button(class="btn btn-warning", 
+                 `data-toggle`="collapse", 
+                 `data-target`="#collapseExample",
+                 "References")),
+   
+   div(class="collapse", id="collapseExample",
+       div(class="card card-body",
+           includeMarkdown("references.md")
+       )),
+   
    
    
    selectInput("select", label = h3("Plot by type of alimentation"), 
-               choices = list_choices,
+               choices = character(0),
                selected = 1),
    
    plotOutput(outputId = "plot")
 )
 
 # Define server logic required to draw a histogram
-server <- function(input, output) {
+server <- function(input, output,session) {
+  
+  updateSelectInput(session, "select",
+                    choices = list_choices,
+                    selected = tail(list_choices, 1)
+  )
   
   col_scale <- scale_colour_discrete(limits = unique(msleep$vore))
   
-  
+ 
+    
   output$plot <- renderPlot({
+    
+    if(input$select != ""){
     ggplot(msleep %>% filter(vore == input$select), aes(bodywt, sleep_total, colour = vore)) +
           scale_x_log10() +
       col_scale +
       geom_point() 
+    }
   })
    
    
+  
 }
 
 # Run the application 
